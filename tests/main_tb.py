@@ -6,6 +6,10 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
+from .isa import ISA
+
+r = ISA.reg
+
 bin_file_path = path.join(getcwd(), "bin/src/firmware.bin")
 bin_file = open(bin_file_path, "rb")
 binary_blob = bin_file.read()
@@ -54,6 +58,37 @@ async def my_test(dut):
 
 
 @cocotb.test()
+async def verify_isa_parser(dut):
+    """Verify that the ISA parser correctly parses the program blob."""
+    correct_program = [
+        0x00000013,  # nop
+        0x00210113,  # addi x2, x2, 2
+        0x04008093,  # addi x1, x1, 64
+        0x0020B023,  # sd x2, 0(x1)
+        0x00000013,  # nop
+        # end loop to prevent crash
+        0x01800093,  # addi x1, x0, 24
+        0x00008067,  # jalr x0, 0(x1) (infinite loop)
+    ]
+
+    tested_program = [
+        ISA.nop(),  # nop
+        ISA.addi(r.sp, r.sp, 2),  # addi x2, x2, 2
+        ISA.addi(r.ra, r.ra, 64),  # addi x1, x1, 64
+        ISA.sd(r.ra, r.sp, 0),  # sd x2, 0(x1)
+        ISA.nop(),  # nop
+        # end loop to prevent crash
+        ISA.addi(r.ra, r.zero, 24),  # addi x1, x0, 24
+        ISA.jalr(r.zero, r.ra, 0),  # jalr x0, 0(x1) (infinite loop)
+    ]
+
+    for counter in range(len(correct_program)):
+        assert correct_program[counter] == tested_program[counter], (
+            f"Expected {hex(correct_program[counter])}, got {hex(tested_program[counter])}"
+        )
+
+
+@cocotb.test()
 async def immediate_add_operation(dut):
     """Try performing some computation."""
     cocotb.start_soon(Clock(dut.clk, 2).start())
@@ -61,24 +96,21 @@ async def immediate_add_operation(dut):
 
     blob_copy = copy.copy(binary_blob)
     program = [
-        0x00000013,  # nop
-        0x00210113,  # addi x2, x2, 2
-        0x04008093,  # addi x1, x1, 64
-        0x0020B023,  # sd x2, 0(x1)
-        0x00000013,  # nop
+        ISA.nop(),  # nop
+        ISA.addi(r.a0, r.a0, 2),  # addi x2, x2, 2
+        ISA.addi(r.a1, r.a1, 64),  # addi x1, x1, 64
+        ISA.sd(r.a1, r.a0, 0),  # sd x2, 0(x1)
+        ISA.nop(),  # nop
         # end loop to prevent crash
-        0x01800093,  # addi x1, x0, 20
-        0x00008067,  # jalr x0, 0(x1) (infinite loop)
-        0x00000000,  # nop
-        0x00000000,  # nop
-        0x00000000,  # nop
+        ISA.addi(r.a1, r.zero, 24),  # addi x1, x0, 24
+        ISA.jalr(r.zero, r.a1, 0),  # jalr x0, 0(x1) (infinite loop)
     ]
 
     blob = make_blob(program)
 
     print("Entire program blob: " + " ".join(hex(i) for i in blob))
 
-    for _ in range(100 * 4):
+    for _ in range(len(program)):
         addr = int(dut.raddr.value)
         data = read_full(addr, blob)
         print("Reading address: " + hex(addr) + " (value: " + hex(data) + ")")

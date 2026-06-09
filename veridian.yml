@@ -1,0 +1,7 @@
+verilator:
+  syntax:
+    enabled: true
+    args:
+      - --lint-only
+      - --no-timing
+      - --sv

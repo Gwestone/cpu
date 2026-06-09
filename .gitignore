@@ -1,0 +1,43 @@
+# simulation build artifacts
+sim_build/
+obj_dir/
+dump.vcd
+*.vcd
+*.fst
+coverage.dat
+results.xml
+
+# cocotb
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# python venv
+venv/
+*.egg-info/
+
+# verilator
+*.dat
+*.log
+
+# vivado (for when you get there)
+*.jou
+*.log
+*.str
+*.mif
+*.xpr
+.Xil/
+vivado_project/
+
+# surfer/gtkwave
+*.gtkw
+
+# sim output directory
+sim/
+
+# editor
+.zed/
+*.swp
+*.swo
+.vscode/

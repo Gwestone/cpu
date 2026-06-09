@@ -61,13 +61,13 @@ async def immediate_add_operation(dut):
 
     blob_copy = copy.copy(binary_blob)
     program = [
-        0x00000000,  # nop
-        0x00200013,  # addi x0, x0, 2
-        0x00200013,  # addi x0, x0, 2
+        0x00000013,  # nop
+        0x00210113,  # addi x2, x2, 2
         0x04008093,  # addi x1, x1, 64
-        0x0000B023,  # sd x0, 0(x1)
+        0x0020B023,  # sd x2, 0(x1)
+        0x00000013,  # nop
         # end loop to prevent crash
-        0x01400093,  # addi x1, x0, 24
+        0x01800093,  # addi x1, x0, 20
         0x00008067,  # jalr x0, 0(x1) (infinite loop)
         0x00000000,  # nop
         0x00000000,  # nop
@@ -86,4 +86,4 @@ async def immediate_add_operation(dut):
         await ClockCycles(dut.clk, 1)
 
     assert dut.waddr.value == 0x40
-    assert dut.wdata.value == 0x04
+    assert dut.wdata.value == 0x02

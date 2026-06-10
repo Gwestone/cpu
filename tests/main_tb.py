@@ -4,7 +4,7 @@ from os import getcwd, path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 
 from .isa import ISA
 
@@ -103,18 +103,19 @@ async def immediate_add_operation(dut):
         ISA.addi(r.a2, r.zero, 64),  # addi x1, x1, 64
         ISA.sd(r.a2, r.a1, 0),  # sd x2, 0(x1)
         # clear a1 and load our saved value back into x1
-        ISA.addi(r.a1, r.zero, 0),  # addi x2, x0, 0
-        ISA.lb(r.a1, r.a2, 0),  # ld x1, 0(x2)
+        ISA.addi(r.a3, r.zero, 0),  # addi x2, x0, 0
+        ISA.lb(r.a3, r.a2, 0),  # ld x1, 0(x2)
         # end loop to prevent crash
         ISA.addi(r.a1, r.zero, 24),  # addi x1, x0, 24
         ISA.jalr(r.zero, r.a1, 0),  # jalr x0, 0(x1) (infinite loop)
+        ISA.nop(),  # nop
     ]
 
     blob = ISA.make_blob(program)
 
     print("Entire program blob: " + " ".join(hex(i) for i in blob))
 
-    for _ in range(len(program) + 1):
+    for _ in range(len(program) + 5):
         addr = int(dut.raddr.value)
         data = read_full(addr, blob)
         print("Reading address: " + hex(addr) + " (value: " + hex(data) + ")")
@@ -123,4 +124,65 @@ async def immediate_add_operation(dut):
 
     assert dut.waddr.value == 0x40
     assert dut.wdata.value == 0x02
-    assert dut.registers[r.a1].value == 0x02
+    assert dut.registers[r.a3].value == 0x02
+
+
+@cocotb.test()
+async def loop_test(dut):
+    """Test that the jalr loop is detected and pc wraps back to 0x18"""
+    cocotb.start_soon(Clock(dut.clk, 2).start())
+    await reset(dut)
+
+    program = [
+        ISA.nop(),
+        ISA.addi(r.a1, r.zero, 2),
+        ISA.addi(r.a2, r.zero, 64),
+        ISA.sd(r.a2, r.a1, 0),
+        ISA.addi(r.a3, r.zero, 0),
+        ISA.lb(r.a3, r.a2, 0),
+        ISA.addi(r.a1, r.zero, 24),
+        ISA.jalr(r.zero, r.a1, 0),
+        ISA.nop(),
+    ]
+
+    blob = ISA.make_blob(program)
+    dut._log.info("Program:")
+    for i, w in enumerate(program):
+        dut._log.info(f"  [{hex(i * 4)}] {hex(w)}")
+
+    # run until jalr loops back (pc == 0x18) or timeout
+    for cycle in range(200):
+        # drive combinationally BEFORE edge
+        addr = int(dut.raddr.value)
+        data = read_full(addr, blob)
+        dut.rdata.value = data
+
+        dut._log.info(
+            f"cycle={cycle:>3}"
+            f"  raddr={hex(addr):>6}"
+            f"  rdata={hex(data):>12}"
+            f"  state={int(dut.state.value)}"
+            f"  pc={hex(int(dut.pc.value))}"
+        )
+
+        await ClockCycles(dut.clk, 1)
+
+        # check if we've looped back — program complete
+        if int(dut.pc.value) == 0x18 and cycle > 100:
+            dut._log.info("Program completed — jalr loop detected")
+            break
+    else:
+        raise AssertionError("Timeout — program did not complete")
+
+    # final assertions
+    assert int(dut.waddr.value) == 0x40, (
+        f"waddr: expected 0x40 got {hex(int(dut.waddr.value))}"
+    )
+    assert int(dut.wdata.value) == 0x02, (
+        f"wdata: expected 0x02 got {hex(int(dut.wdata.value))}"
+    )
+    assert int(dut.registers[r.a3].value) == 0x02, (
+        f"a3: expected 0x02 got {hex(int(dut.registers[r.a3].value))}"
+    )
+
+    dut._log.info("All assertions passed ✓")

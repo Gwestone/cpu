@@ -16,6 +16,8 @@ binary_blob = bin_file.read()
 
 
 def read_full(address, array):
+    if address == 0x40:
+        return 0x02
     return (
         (array[address] << 0)  # first byte = least significant
         | (array[address + 1] << 8)
@@ -90,27 +92,29 @@ async def verify_isa_parser(dut):
 
 @cocotb.test()
 async def immediate_add_operation(dut):
-    """Try performing some computation."""
+    """Try performing some computation and load some data from memory"""
     cocotb.start_soon(Clock(dut.clk, 2).start())
     await reset(dut)
 
     blob_copy = copy.copy(binary_blob)
     program = [
         ISA.nop(),  # nop
-        ISA.addi(r.a0, r.a0, 2),  # addi x2, x2, 2
-        ISA.addi(r.a1, r.a1, 64),  # addi x1, x1, 64
-        ISA.sd(r.a1, r.a0, 0),  # sd x2, 0(x1)
-        ISA.nop(),  # nop
+        ISA.addi(r.a1, r.zero, 2),  # addi x2, x2, 2
+        ISA.addi(r.a2, r.zero, 64),  # addi x1, x1, 64
+        ISA.sd(r.a2, r.a1, 0),  # sd x2, 0(x1)
+        # clear a1 and load our saved value back into x1
+        ISA.addi(r.a1, r.zero, 0),  # addi x2, x0, 0
+        ISA.lb(r.a1, r.a2, 0),  # ld x1, 0(x2)
         # end loop to prevent crash
         ISA.addi(r.a1, r.zero, 24),  # addi x1, x0, 24
         ISA.jalr(r.zero, r.a1, 0),  # jalr x0, 0(x1) (infinite loop)
     ]
 
-    blob = make_blob(program)
+    blob = ISA.make_blob(program)
 
     print("Entire program blob: " + " ".join(hex(i) for i in blob))
 
-    for _ in range(len(program)):
+    for _ in range(len(program) + 1):
         addr = int(dut.raddr.value)
         data = read_full(addr, blob)
         print("Reading address: " + hex(addr) + " (value: " + hex(data) + ")")
@@ -119,3 +123,4 @@ async def immediate_add_operation(dut):
 
     assert dut.waddr.value == 0x40
     assert dut.wdata.value == 0x02
+    assert dut.registers[r.a1].value == 0x02

@@ -197,6 +197,7 @@ async def loop_test(dut):
             f"cycle={cycle:>3}"
             f"  raddr={hex(addr):>6}"
             f"  rdata={hex(data):>12}"
+            f"  func3={int(dut.func3.value):#03b}"
             f"  state={int(dut.state.value)}"
             f"  pc={hex(int(dut.pc.value))}"
         )

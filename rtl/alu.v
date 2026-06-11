@@ -20,6 +20,8 @@ module alu(
             4'b0101: result = ~(a | b);
             4'b0110: result = a << b;
             4'b0111: result = a >> b;
+            4'b1111: result = $signed(a) >>> b;
+            4'b1001: result = b; //lui
             default: result = 64'b0;
         endcase
         result_out = result & mask_in;

@@ -34,10 +34,11 @@ module alu_controller(
             7'b0111011:
                 if(func3 == 3'b000 && func7 == 7'b0000000) alu_op = 4'b0000; //addw
                 else if(func3 == 3'b000 && func7 == 7'b0100000) alu_op = 4'b0010; //subw
-                else if(func3 == 3'b011 && func7 == 7'b0000000) alu_op = 4'b0011; //mulw
-                else if(func3 == 3'b100 && func7 == 7'b0000000) alu_op = 4'b0100; //divw
-                else if(func3 == 3'b101 && func7 == 7'b0000000) alu_op = 4'b0101; //remw
-            7'b11: ;
+                else if(func3 == 3'b001 && func7 == 7'b0000000) alu_op = 4'b0110; //sllw
+                else if(func3 == 3'b101 && func7 == 7'b0000000) alu_op = 4'b0111; //srlw
+                else if(func3 == 3'b101 && func7 == 7'b0100000) alu_op = 4'b1111; //sraw
+            7'b0110111: alu_op = 4'b1001; //lui - set rd to immediate
+            7'b0010111: alu_op = 4'b1001; //auipc - set rd to pc + immediate
             default: ;
         endcase
     end

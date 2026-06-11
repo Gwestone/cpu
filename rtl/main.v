@@ -11,12 +11,15 @@ module main(
     localparam EXEC      = 2'b00;
     localparam LOAD_WAIT = 2'b01;  // address on bus, waiting for memory
     localparam LOAD_DONE = 2'b10;  // rdata is valid, capture it
+    localparam FETCH_INSTRUCTION = 2'b11;  // latching instruction from memory into instruction_register
 
     reg [63:0] pc;
     reg [63:0] registers [0:31];
     reg [63:0] load_addr;
     reg [4:0]  load_reg;
+    reg [63:0] load_mask;
     reg [1:0]  state;
+    reg [63:0] instruction_register;
 
     // Combinational decode — valid only when state == EXEC and rdata holds an instruction
     wire [6:0]  opcode = rdata[6:0];
@@ -74,6 +77,7 @@ module main(
             waddr      <= 0;
             wdata      <= 0;
             state      <= EXEC;
+            load_mask  <= {64{1'b1}};
             for (integer i = 0; i < 32; i = i + 1)
                 registers[i] <= 0;
 
@@ -101,10 +105,35 @@ module main(
                             if (rd != 0) begin
                                 if (func3 == 3'b000 && func7 == 7'b0000000) begin       // addw
                                     registers[rd] <= alu_result;
-                                end else if (func3 == 3'b010 && func7 == 7'b0100000) begin       // subw
+                                end else if (func3 == 3'b000 && func7 == 7'b0100000) begin       // subw
+                                    registers[rd] <= alu_result;
+                                end else if (func3 == 3'b001 && func7 == 7'b0000000) begin       // sllw
+                                    registers[rd] <= alu_result;
+                                end else if (func3 == 3'b101 && func7 == 7'b0000000) begin       // srlw
+                                    registers[rd] <= alu_result;
+                                end else if (func3 == 3'b101 && func7 == 7'b0100000) begin       // sraw
                                     registers[rd] <= alu_result;
                                 end
+
                             end
+                        end
+
+                        7'b0110111: begin           // U-type (lui)
+                            if (rd != 0)
+                                registers[rd] <= alu_result;
+                            pc <= pc + 4;
+                        end
+
+                        7'b0010111: begin           // U-type (auipc)
+                            if (rd != 0)
+                                registers[rd] <= pc + alu_result;
+                            pc <= pc + 4;
+                        end
+
+                        7'b1101111: begin           // J-type (jal)
+                            if (rd != 0)
+                                registers[rd] <= pc + 4;
+                            pc <= pc + alu_result;
                         end
 
                         7'b0010011: begin           // I-type arithmetic
@@ -113,14 +142,39 @@ module main(
                             pc <= pc + 4;
                         end
 
-                        7'b0000011: begin           // Load
+                        7'b0000011: begin           // Load opcode
                             case (func3)
                                 3'b000: begin       // lb
                                     //address to load from
                                     load_addr <= alu_result;
                                     load_reg  <= rd;
                                     state     <= LOAD_WAIT;
-                                    //TODO find out why this worked
+                                    load_mask <= {56'b0, {8{1'b1}}};
+                                    //TODO find out why this don't need pc increase
+                                end
+                                3'b010: begin       // lw
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {32'b0, {32{1'b1}}};
+                                    //TODO find out why this don't need pc increase
+                                end
+                                3'b011: begin       // ld
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {64{1'b1}};
+                                    //TODO find out why this don't need pc increase
+                                end
+                                3'b110: begin       // lwu
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {32'b0, {32{1'b1}}};
+                                    //TODO find out why this don't need pc increase
                                 end
                                 default: begin
                                     pc <= pc + 4;
@@ -166,10 +220,11 @@ module main(
                     // rdata is guaranteed valid for load_addr regardless of memory type
                     // TODO add flag to know size of data to read, also add same states to write data into memory
                     if (load_reg != 0)
-                        registers[load_reg] <= rdata; // lb: sign-extend byte
+                        registers[load_reg] <= rdata & load_mask; // lb: sign-extend byte //TODO do i really need to sight extend it?
                     load_reg <= 0;
                     load_addr <= 0;
                     state    <= EXEC;
+                    load_mask <= {64{1'b1}};
                 end
 
                 default: state <= EXEC;             // unreachable, but safe

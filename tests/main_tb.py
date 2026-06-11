@@ -128,7 +128,7 @@ async def immediate_add_operation(dut):
     for i, w in enumerate(program):
         dut._log.info(f"  [{hex(i * 4)}] {hex(w)}")
 
-    for cycle in range(len(program) + 5):
+    for cycle in range(len(text_section) * 10):
         addr = int(dut.raddr.value)
         data = read_memory(addr, program)
         write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
@@ -186,7 +186,7 @@ async def loop_test(dut):
         dut._log.info(f"  [{hex(i * 4)}] {hex(w)}")
 
     # run until jalr loops back (pc == 0x18) or timeout
-    for cycle in range(len(program)):
+    for cycle in range(len(text_section) * 10):
         # drive combinationally BEFORE edge
         addr = int(dut.raddr.value)
         data = read_memory(addr, program)
@@ -195,11 +195,11 @@ async def loop_test(dut):
 
         dut._log.info(
             f"cycle={cycle:>3}"
-            f"  raddr={hex(addr):>6}"
-            f"  rdata={hex(data):>12}"
-            f"  func3={int(dut.func3.value):#03b}"
             f"  state={int(dut.state.value)}"
             f"  pc={hex(int(dut.pc.value))}"
+            f"  instr={hex(int(dut.instruction_reg.value))}"
+            f"  opcode={int(dut.opcode.value):#04x}"
+            f"  load_addr={hex(int(dut.load_addr.value))}"
         )
 
         await ClockCycles(dut.clk, 1)

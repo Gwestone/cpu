@@ -1,6 +1,6 @@
 module alu_b_decoder(
     input  [6:0]  opcode,
-    input  [63:0] rdata,
+    input  [31:0] rdata,
     input  [63:0] rs_reg,
     output reg [63:0] alu_b
 );

@@ -41,3 +41,5 @@ sim/
 *.swp
 *.swo
 .vscode/
+
+dump.surf.ron

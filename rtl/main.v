@@ -26,24 +26,24 @@ module main(
     wire [4:0]  rs2    = rdata[24:20];
     wire [4:0]  rd     = rdata[11:7];
 
-    wire [63:0] imm_i  = {{52{rdata[31]}}, rdata[31:20]};
-    wire [63:0] imm_s  = {{52{rdata[31]}}, rdata[31:25], rdata[11:7]};
-    wire [63:0] imm_b = {{51{rdata[31]}}, rdata[31], rdata[7], rdata[30:25], rdata[11:8], 1'b0};
-    wire [63:0] imm_j = {{43{rdata[31]}}, rdata[31], rdata[19:12], rdata[20], rdata[30:21], 1'b0};
-    wire [63:0] imm_u = {{32{rdata[31]}}, rdata[31:12], 12'b0};
-
     wire [63:0] alu_a = registers[rs1];
+    wire [63:0] alu_b;
 
-    wire [63:0] alu_b =
-        (opcode == 7'b0010011) ? imm_i :   // I-type arithmetic (addi etc)
-        (opcode == 7'b0000011) ? imm_i :   // loads
-        (opcode == 7'b1100111) ? imm_i :   // jalr
-        (opcode == 7'b0100011) ? imm_s :   // stores
-        (opcode == 7'b1100011) ? imm_b :   // branches
-        (opcode == 7'b1101111) ? imm_j :   // jal
-        (opcode == 7'b0110111) ? imm_u :   // lui
-        (opcode == 7'b0010111) ? imm_u :   // auipc
-        registers[rs2];                    // R-type default
+    alu_b_decoder alu_b_dec(
+        .opcode(opcode),
+        .rdata(rdata),
+        .rs_reg(registers[rs2]),
+        .alu_b(alu_b)
+    );
+
+    wire [63:0] alu_mask;
+
+    alu_mask_decoder alu_mask_dec(
+        .opcode(opcode),
+        .func3(func3),
+        .func7(func7),
+        .alu_mask(alu_mask)
+    );
 
     wire [3:0]  alu_op;
     wire [63:0] alu_result;
@@ -56,10 +56,11 @@ module main(
     );
 
     alu alu_inst(
-        .a(alu_a),
-        .b(alu_b),
-        .alu_op(alu_op),
-        .result(alu_result)
+        .a_in(alu_a),
+        .b_in(alu_b),
+        .mask_in(alu_mask),
+        .alu_op_in(alu_op),
+        .result_out(alu_result)
     );
 
     // raddr: point at instruction during EXEC, data during load states
@@ -81,39 +82,34 @@ module main(
 
                 EXEC: begin
                     case (opcode)
-                        7'b0010011: begin           // I-type arithmetic
-                            case (func3)
-                                3'b000: begin       // addi
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
+                        7'b0011011: begin           // addiw I-type arithmetic
+                            if (rd != 0) begin
+                                if (func3 == 3'b000) begin       // addiw
+                                    registers[rd] <= {{32{alu_result[31]}}, alu_result[31:0]}; // cast to 32 bits signed
+                                end else if (func3 == 3'b001) begin       // slliw
+                                    registers[rd] <= {{32{alu_result[31]}}, alu_result[31:0]}; // shift 32 bits left
+                                end else if (func3 == 3'b101 && func7 == 7'b0000000) begin       // srliw
+                                    registers[rd] <= {{32{alu_result[31]}}, alu_result[31:0]}; // shift 32 bits left
+                                end else if (func3 == 3'b101 && func7 == 7'b0100000) begin       // sraiw
+                                    registers[rd] <= {{32{alu_result[31]}}, alu_result[31:0]}; // shift 32 bits left
                                 end
-                                3'b001: begin       // subi
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
-                                3'b010: begin       // andi
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
-                                3'b011: begin       // ori
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
-                                3'b100: begin       // xori
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
-                                3'b101: begin       // slli
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
-                                3'b110: begin       // srli
-                                    if (rd != 0)
-                                        registers[rd] <= alu_result;
-                                end
+                            end
+                            pc <= pc + 4;
+                        end
 
-                                default: ;
-                            endcase
+                        7'b0111011: begin
+                            if (rd != 0) begin
+                                if (func3 == 3'b000 && func7 == 7'b0000000) begin       // addw
+                                    registers[rd] <= alu_result;
+                                end else if (func3 == 3'b010 && func7 == 7'b0100000) begin       // subw
+                                    registers[rd] <= alu_result;
+                                end
+                            end
+                        end
+
+                        7'b0010011: begin           // I-type arithmetic
+                            if (rd != 0)
+                                registers[rd] <= alu_result;
                             pc <= pc + 4;
                         end
 
@@ -124,15 +120,18 @@ module main(
                                     load_addr <= alu_result;
                                     load_reg  <= rd;
                                     state     <= LOAD_WAIT;
+                                    //TODO find out why this worked
                                 end
-                                default: pc <= pc + 4;
+                                default: begin
+                                    pc <= pc + 4;
+                                end
                             endcase
                         end
 
                         7'b0100011: begin           // S-type store
                             case (func3)
                                 3'b011: begin       // sd
-                                    waddr <= registers[rs1] + imm_s;
+                                    waddr <= alu_result;
                                     wdata <= registers[rs2];
                                 end
                                 default: ;

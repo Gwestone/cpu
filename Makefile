@@ -3,6 +3,8 @@ TOPLEVEL_LANG  		= verilog
 VERILOG_SOURCES 	+= $(PWD)/rtl/main.v
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu.v
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu_controller.v
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_b_decoder.v
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_mask_decoder.v
 COCOTB_TOPLEVEL 	= main
 COCOTB_TEST_MODULES = tests.main_tb
 

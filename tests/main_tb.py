@@ -15,15 +15,21 @@ bin_file = open(bin_file_path, "rb")
 binary_blob = bin_file.read()
 
 
-def read_full(address, array):
-    if address == 0x40:
-        return 0x02
+# TODO add read/write negotiation between CPU and memory controller
+def read_memory(address, array):
     return (
         (array[address] << 0)  # first byte = least significant
         | (array[address + 1] << 8)
         | (array[address + 2] << 16)
         | (array[address + 3] << 24)  # last byte = most significant
     )
+
+
+def write_memory(address, data, array):
+    array[address] = (data >> 0) & 0xFF
+    array[address + 1] = (data >> 8) & 0xFF
+    array[address + 2] = (data >> 16) & 0xFF
+    array[address + 3] = (data >> 24) & 0xFF
 
 
 def make_blob(words):
@@ -97,43 +103,9 @@ async def immediate_add_operation(dut):
     await reset(dut)
 
     blob_copy = copy.copy(binary_blob)
-    program = [
-        ISA.nop(),  # nop
-        ISA.addi(r.a1, r.zero, 2),  # addi x2, x2, 2
-        ISA.addi(r.a2, r.zero, 64),  # addi x1, x1, 64
-        ISA.sd(r.a2, r.a1, 0),  # sd x2, 0(x1)
-        # clear a1 and load our saved value back into x1
-        ISA.addi(r.a3, r.zero, 0),  # addi x2, x0, 0
-        ISA.lb(r.a3, r.a2, 0),  # ld x1, 0(x2)
-        # end loop to prevent crash
-        ISA.addi(r.a1, r.zero, 24),  # addi x1, x0, 24
-        ISA.jalr(r.zero, r.a1, 0),  # jalr x0, 0(x1) (infinite loop)
-        ISA.nop(),  # nop
-    ]
+    program = bytearray()
 
-    blob = ISA.make_blob(program)
-
-    print("Entire program blob: " + " ".join(hex(i) for i in blob))
-
-    for _ in range(len(program) + 5):
-        addr = int(dut.raddr.value)
-        data = read_full(addr, blob)
-        print("Reading address: " + hex(addr) + " (value: " + hex(data) + ")")
-        dut.rdata.value = data
-        await ClockCycles(dut.clk, 1)
-
-    assert dut.waddr.value == 0x40
-    assert dut.wdata.value == 0x02
-    assert dut.registers[r.a3].value == 0x02
-
-
-@cocotb.test()
-async def loop_test(dut):
-    """Test that the jalr loop is detected and pc wraps back to 0x18"""
-    cocotb.start_soon(Clock(dut.clk, 2).start())
-    await reset(dut)
-
-    program = [
+    text_section = [
         ISA.nop(),
         ISA.addi(r.a1, r.zero, 2),
         ISA.addi(r.a2, r.zero, 64),
@@ -145,16 +117,21 @@ async def loop_test(dut):
         ISA.nop(),
     ]
 
-    blob = ISA.make_blob(program)
+    text_blob = ISA.make_blob(text_section)
+    program.extend(text_blob)
+
+    data_section = [0x00] * 64
+    data_blob = ISA.make_blob(data_section)
+    program.extend(data_blob)
+
     dut._log.info("Program:")
     for i, w in enumerate(program):
         dut._log.info(f"  [{hex(i * 4)}] {hex(w)}")
 
-    # run until jalr loops back (pc == 0x18) or timeout
-    for cycle in range(200):
-        # drive combinationally BEFORE edge
+    for cycle in range(len(program) + 5):
         addr = int(dut.raddr.value)
-        data = read_full(addr, blob)
+        data = read_memory(addr, program)
+        write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
         dut.rdata.value = data
 
         dut._log.info(
@@ -171,8 +148,60 @@ async def loop_test(dut):
         if int(dut.pc.value) == 0x18 and cycle > 100:
             dut._log.info("Program completed — jalr loop detected")
             break
-    else:
-        raise AssertionError("Timeout — program did not complete")
+
+    assert dut.waddr.value == 0x40
+    assert dut.wdata.value == 0x02
+    assert dut.registers[r.a3].value == 0x02
+
+
+@cocotb.test()
+async def loop_test(dut):
+    """Test that the jalr loop is detected and pc wraps back to 0x18"""
+    cocotb.start_soon(Clock(dut.clk, 2).start())
+    await reset(dut)
+
+    program = bytearray()
+
+    text_section = [
+        ISA.nop(),
+        ISA.addi(r.a1, r.zero, 2),
+        ISA.addi(r.a2, r.zero, 64),
+        ISA.sd(r.a2, r.a1, 0),
+        ISA.addi(r.a3, r.zero, 0),
+        ISA.lb(r.a3, r.a2, 0),
+        ISA.addi(r.a1, r.zero, 24),
+        ISA.jalr(r.zero, r.a1, 0),
+        ISA.nop(),
+    ]
+
+    text_blob = ISA.make_blob(text_section)
+    program.extend(text_blob)
+
+    data_section = [0x00] * 64
+    data_blob = ISA.make_blob(data_section)
+    program.extend(data_blob)
+
+    dut._log.info("Program:")
+    for i, w in enumerate(program):
+        dut._log.info(f"  [{hex(i * 4)}] {hex(w)}")
+
+    # run until jalr loops back (pc == 0x18) or timeout
+    for cycle in range(len(program)):
+        # drive combinationally BEFORE edge
+        addr = int(dut.raddr.value)
+        data = read_memory(addr, program)
+        write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
+        dut.rdata.value = data
+
+        dut._log.info(
+            f"cycle={cycle:>3}"
+            f"  raddr={hex(addr):>6}"
+            f"  rdata={hex(data):>12}"
+            f"  state={int(dut.state.value)}"
+            f"  pc={hex(int(dut.pc.value))}"
+        )
+
+        await ClockCycles(dut.clk, 1)
 
     # final assertions
     assert int(dut.waddr.value) == 0x40, (

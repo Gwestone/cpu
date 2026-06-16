@@ -145,22 +145,85 @@ module main(
                             state <= FETCH_ADDR;
                         end
 
-                        7'b1101111: begin           // J-type (jal)
-                            if (rd != 0)
-                                registers[rd] <= pc + 4;
-                            pc <= pc + alu_result;
-                            state <= FETCH_ADDR;
-                        end
-
-                        7'b0010011: begin           // I-type arithmetic
-                            if (rd != 0)
-                                registers[rd] <= alu_result;
-                            pc <= pc + 4;
-                            state <= FETCH_ADDR;
+                        7'b0010011: begin           // I-type arithmetic (addi)
+                            case(func3)
+                                3'b000: begin       // addi
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                //TODO rewrite all using func7 to use switch
+                                3'b001: begin       // slli
+                                    if(func7 == 7'b0000000)begin
+                                        if (rd != 0)
+                                            registers[rd] <= alu_result;
+                                        pc <= pc + 4;
+                                        state <= FETCH_ADDR;
+                                    end
+                                end
+                                3'b101: begin
+                                    case(func7)
+                                        7'b0000000: begin   // srli
+                                            if (rd != 0)
+                                                registers[rd] <= alu_result;
+                                            pc <= pc + 4;
+                                            state <= FETCH_ADDR;
+                                        end
+                                        7'b0100000: begin   // srai
+                                            if (rd != 0)
+                                                registers[rd] <= alu_result;
+                                            pc <= pc + 4;
+                                            state <= FETCH_ADDR;
+                                        end
+                                        default: begin
+                                            if (rd != 0)
+                                                registers[rd] <= alu_result;
+                                            pc <= pc + 4;
+                                            state <= FETCH_ADDR;
+                                        end
+                                    endcase
+                                end
+                                3'b010: begin       // slti
+                                    if ($signed(registers[rs1]) < $signed(alu_result) && rd != 0)
+                                        registers[rd] <= 1;
+                                    else if (rd != 0)
+                                        registers[rd] <= 0;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b011: begin       // sltiu
+                                    if ($unsigned(registers[rs1]) < $unsigned(alu_result) && rd != 0)
+                                        registers[rd] <= 1;
+                                    else if (rd != 0)
+                                        registers[rd] <= 0;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b100: begin       // xori
+                                    if(rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b110: begin       // ori
+                                    if(rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b111: begin       // andi
+                                    if(rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                            endcase
                         end
 
                         7'b0000011: begin           // Load opcode
                             case (func3)
+                            //TODO add sign extension
                                 3'b000: begin       // lb
                                     //address to load from
                                     load_addr <= alu_result;
@@ -169,7 +232,39 @@ module main(
                                     load_mask <= {56'b0, {8{1'b1}}};
                                     pc <= pc + 4;
                                 end
+                                3'b100: begin       // lbu
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {56'b0, {8{1'b1}}};
+                                    pc <= pc + 4;
+                                end
+                                3'b001: begin       // lh
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {48'b0, {16{1'b1}}};
+                                    pc <= pc + 4;
+                                end
+                                3'b101: begin       // lhu
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {48'b0, {16{1'b1}}};
+                                    pc <= pc + 4;
+                                end
                                 3'b010: begin       // lw
+                                    //address to load from
+                                    load_addr <= alu_result;
+                                    load_reg  <= rd;
+                                    state     <= LOAD_WAIT;
+                                    load_mask <= {32'b0, {32{1'b1}}};
+                                    pc <= pc + 4;
+                                end
+                                3'b110: begin       // lwu
                                     //address to load from
                                     load_addr <= alu_result;
                                     load_reg  <= rd;
@@ -185,12 +280,12 @@ module main(
                                     load_mask <= {64{1'b1}};
                                     pc <= pc + 4;
                                 end
-                                3'b110: begin       // lwu
+                                3'b111: begin       // ldu
                                     //address to load from
                                     load_addr <= alu_result;
                                     load_reg  <= rd;
                                     state     <= LOAD_WAIT;
-                                    load_mask <= {32'b0, {32{1'b1}}};
+                                    load_mask <= {64{1'b1}};
                                     pc <= pc + 4;
                                 end
                                 default: begin
@@ -201,7 +296,20 @@ module main(
                         end
 
                         7'b0100011: begin           // S-type store
+                            //TODO write separate states for store like it is done for load
                             case (func3)
+                                3'b000: begin       // sb
+                                    waddr <= alu_result;
+                                    wdata <= registers[rs2];
+                                end
+                                3'b001: begin       // sh
+                                    waddr <= alu_result;
+                                    wdata <= registers[rs2];
+                                end
+                                3'b010: begin       // sw
+                                    waddr <= alu_result;
+                                    wdata <= registers[rs2];
+                                end
                                 3'b011: begin       // sd
                                     waddr <= alu_result;
                                     wdata <= registers[rs2];
@@ -209,6 +317,13 @@ module main(
                                 default: ;
                             endcase
                             pc <= pc + 4;
+                            state <= FETCH_ADDR;
+                        end
+
+                        7'b1101111: begin           // J-type (jal)
+                            if (rd != 0)
+                                registers[rd] <= pc + 4;
+                            pc <= pc + alu_result;
                             state <= FETCH_ADDR;
                         end
 
@@ -221,6 +336,127 @@ module main(
                                     state <= FETCH_ADDR;
                                 end
                                 default: begin
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                            endcase
+                        end
+
+                        7'b1100011: begin           // B-type (branch)
+                            case (func3)
+                                3'b000: begin       // BEQ
+                                    if (registers[rs1] == registers[rs2])
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b001: begin       // BNE
+                                    if (registers[rs1] != registers[rs2])
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b100: begin       // BLT
+                                    if ($signed(registers[rs1]) < $signed(registers[rs2]))
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b101: begin       // BGE
+                                    if ($signed(registers[rs1]) > $signed(registers[rs2]))
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b110: begin       // BLTU
+                                    if ($unsigned(registers[rs1]) > $unsigned(registers[rs2]))
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                3'b111: begin       // BGEU
+                                    if ($unsigned(registers[rs1]) >= $unsigned(registers[rs2]))
+                                        pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                default: begin
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                            endcase
+                        end
+
+                        7'b0110011: begin   //add instructions
+                            case({func3, func7})
+                                {3'b000, 7'b0}: begin   // add
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b000, 7'b0100000}: begin   // sub
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b001, 7'b0000000}: begin   // sll
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b010, 7'b0000000}: begin   // slt
+                                    if ($signed(registers[rs1]) < $signed(registers[rs2]) && rd != 0)
+                                        registers[rd] <= 1;
+                                    else if (rd != 0)
+                                        registers[rd] <= 0;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b011, 7'b0000000}: begin   // sltu
+                                    if ($unsigned(registers[rs1]) < $unsigned(registers[rs2]) && rd != 0)
+                                        registers[rd] <= 1;
+                                    else if (rd != 0)
+                                        registers[rd] <= 0;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b100, 7'b0000000}: begin   // xor
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                //TODO implement logical shift
+                                {3'b101, 7'b0000000}: begin   // srl
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b101, 7'b0100000}: begin   // srl
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b110, 7'b0000000}: begin   // or
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
+                                    pc <= pc + 4;
+                                    state <= FETCH_ADDR;
+                                end
+                                {3'b111, 7'b0100000}: begin   // and
+                                    if (rd != 0)
+                                        registers[rd] <= alu_result;
                                     pc <= pc + 4;
                                     state <= FETCH_ADDR;
                                 end

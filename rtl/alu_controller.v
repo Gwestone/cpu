@@ -9,7 +9,7 @@ module alu_controller(
         alu_op = 4'b0000;
 
         case (opcode)
-            7'h0013:
+            7'b0010011:
                 case (func3)
                     3'b000: alu_op = 4'b0000;
                     3'b001: alu_op = 4'b0001;
@@ -39,6 +39,7 @@ module alu_controller(
                 else if(func3 == 3'b101 && func7 == 7'b0100000) alu_op = 4'b1111; //sraw
             7'b0110111: alu_op = 4'b1001; //lui - set rd to immediate
             7'b0010111: alu_op = 4'b1001; //auipc - set rd to pc + immediate
+            7'b1100011: alu_op = 4'b0000; // branches (beq, bne...)
             default: ;
         endcase
     end

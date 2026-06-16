@@ -4,7 +4,7 @@ from os import getcwd, path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles
 
 from .isa import ISA
 
@@ -106,7 +106,6 @@ async def immediate_add_operation(dut):
     program = bytearray()
 
     text_section = [
-        ISA.nop(),
         ISA.addi(r.a1, r.zero, 2),
         ISA.addi(r.a2, r.zero, 64),
         ISA.sd(r.a2, r.a1, 0),
@@ -114,7 +113,6 @@ async def immediate_add_operation(dut):
         ISA.lb(r.a3, r.a2, 0),
         ISA.addi(r.a1, r.zero, 24),
         ISA.jalr(r.zero, r.a1, 0),
-        ISA.nop(),
     ]
 
     text_blob = ISA.make_blob(text_section)
@@ -163,7 +161,6 @@ async def loop_test(dut):
     program = bytearray()
 
     text_section = [
-        ISA.nop(),
         ISA.addi(r.a1, r.zero, 2),
         ISA.addi(r.a2, r.zero, 64),
         ISA.sd(r.a2, r.a1, 0),
@@ -171,7 +168,6 @@ async def loop_test(dut):
         ISA.lb(r.a3, r.a2, 0),
         ISA.addi(r.a1, r.zero, 24),
         ISA.jalr(r.zero, r.a1, 0),
-        ISA.nop(),
     ]
 
     text_blob = ISA.make_blob(text_section)
@@ -193,12 +189,17 @@ async def loop_test(dut):
         write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
         dut.rdata.value = data
 
+        inst_val = int(dut.instruction_reg.value)
+        opcode = inst_val & 0x7F  # bits [6:0]
+        func3 = (inst_val >> 12) & 0x7  # bits [14:12]
+
         dut._log.info(
             f"cycle={cycle:>3}"
             f"  state={int(dut.state.value)}"
             f"  pc={hex(int(dut.pc.value))}"
             f"  instr={hex(int(dut.instruction_reg.value))}"
-            f"  opcode={int(dut.opcode.value):#04x}"
+            f"  opcode={int(opcode):#04x}"
+            f"  func3={int(func3):#04x}"
             f"  load_addr={hex(int(dut.load_addr.value))}"
         )
 

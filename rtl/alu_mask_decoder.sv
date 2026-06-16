@@ -2,7 +2,7 @@ module alu_mask_decoder (
     input  [6:0] opcode,
     input  [2:0] func3,    // unused — mask depends only on opcode
     input  [6:0] func7,    // unused
-    output reg [63:0] alu_mask
+    output logic [63:0] alu_mask
 );
     always_comb begin
         case (opcode)

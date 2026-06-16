@@ -1,10 +1,13 @@
 SIM           		?= verilator
 TOPLEVEL_LANG  		= verilog
-VERILOG_SOURCES 	+= $(PWD)/rtl/main.v
-VERILOG_SOURCES 	+= $(PWD)/rtl/alu.v
-VERILOG_SOURCES 	+= $(PWD)/rtl/alu_controller.v
-VERILOG_SOURCES 	+= $(PWD)/rtl/alu_b_decoder.v
-VERILOG_SOURCES 	+= $(PWD)/rtl/alu_mask_decoder.v
+VERILOG_SOURCES 	+= $(PWD)/rtl/cpu_types.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_types.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/load_types.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/main.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_controller.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_b_decoder.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/alu_mask_decoder.sv
 COCOTB_TOPLEVEL 	= main
 COCOTB_TEST_MODULES = tests.main_tb
 

@@ -1,0 +1,8 @@
+rtl/alu_controller.sv
+rtl/alu_mask_decoder.sv
+rtl/main.sv
+rtl/alu_types.sv
+rtl/alu_b_decoder.sv
+rtl/alu.sv
+rtl/bus_to_uart.sv
+rtl/cpu_types.sv

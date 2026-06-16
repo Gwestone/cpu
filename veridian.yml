@@ -5,3 +5,4 @@ verilator:
       - --lint-only
       - --no-timing
       - --sv
+      - --file_list_path .verible.filelist

@@ -2,16 +2,16 @@ module bus_to_uart (
     input clk,
     input reset,
     input [7:0] bus,
-    output reg tx
+    output logic tx
 );
 
-reg [2:0] bus_pointer;
+logic [2:0] bus_pointer;
 
 initial begin
     bus_pointer = 3'h0;
 end
 
-always @(posedge clk) begin
+always_ff @(posedge clk) begin
     tx <= bus[bus_pointer];
     if (reset) begin
         bus_pointer <= 3'h0;

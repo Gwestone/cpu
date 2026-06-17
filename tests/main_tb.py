@@ -25,11 +25,12 @@ def read_memory(address, array):
     )
 
 
-def write_memory(address, data, array):
-    array[address] = (data >> 0) & 0xFF
-    array[address + 1] = (data >> 8) & 0xFF
-    array[address + 2] = (data >> 16) & 0xFF
-    array[address + 3] = (data >> 24) & 0xFF
+def write_memory(address, enable, data, array):
+    if enable:
+        array[address] = (data >> 0) & 0xFF
+        array[address + 1] = (data >> 8) & 0xFF
+        array[address + 2] = (data >> 16) & 0xFF
+        array[address + 3] = (data >> 24) & 0xFF
 
 
 def make_blob(words):
@@ -129,7 +130,9 @@ async def immediate_add_operation(dut):
     for cycle in range(len(text_section) * 10):
         addr = int(dut.raddr.value)
         data = read_memory(addr, program)
-        write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
+        write_memory(
+            int(dut.waddr.value), int(dut.wen.value), int(dut.wdata.value), program
+        )
         dut.rdata.value = data
 
         dut._log.info(
@@ -147,8 +150,17 @@ async def immediate_add_operation(dut):
             dut._log.info("Program completed — jalr loop detected")
             break
 
-    assert dut.waddr.value == 0x40
-    assert dut.wdata.value == 0x02
+    # assert dut.waddr.value == 0x40
+    # assert dut.wdata.value == 0x02
+
+    # final assertions
+    # int(dut.waddr.value) == 0x40, (
+    #    f"waddr: expected 0x40 got {hex(int(dut.waddr.value))}"
+    # )
+    assert read_memory(0x40, program) == 0x02, (
+        f"wdata: expected 0x02 got {hex(int(dut.wdata.value))}"
+    )
+
     assert dut.registers[r.a3].value == 0x02
 
 
@@ -186,7 +198,9 @@ async def loop_test(dut):
         # drive combinationally BEFORE edge
         addr = int(dut.raddr.value)
         data = read_memory(addr, program)
-        write_memory(int(dut.waddr.value), int(dut.wdata.value), program)
+        write_memory(
+            int(dut.waddr.value), int(dut.wen.value), int(dut.wdata.value), program
+        )
         dut.rdata.value = data
 
         inst_val = int(dut.instruction_reg.value)
@@ -206,11 +220,11 @@ async def loop_test(dut):
         await ClockCycles(dut.clk, 1)
 
     # final assertions
-    assert int(dut.waddr.value) == 0x40, (
-        f"waddr: expected 0x40 got {hex(int(dut.waddr.value))}"
-    )
-    assert int(dut.wdata.value) == 0x02, (
-        f"wdata: expected 0x02 got {hex(int(dut.wdata.value))}"
+    # int(dut.waddr.value) == 0x40, (
+    #    f"waddr: expected 0x40 got {hex(int(dut.waddr.value))}"
+    # )
+    assert read_memory(0x40, program) == 0x02, (
+        f"memory[0x40]: expected 0x02 got {hex(read_memory(0x40, program))}"
     )
     assert int(dut.registers[r.a3].value) == 0x02, (
         f"a3: expected 0x02 got {hex(int(dut.registers[r.a3].value))}"

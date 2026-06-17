@@ -16,14 +16,18 @@ module main(
     output wire [63:0] raddr,
     input  wire [63:0] rdata,
     output logic  [63:0] waddr,
-    output logic  [63:0] wdata
+    output logic  [63:0] wdata,
+    output logic         wen
 );
     logic [63:0] pc;
     logic [63:0] registers [32];
     logic[63:0] load_addr;
     logic[4:0]  load_reg;
     load_func_t load_func;
-    logic load_extended;
+
+    logic [63:0] write_addr;
+    logic [4:0] write_reg;
+    logic [63:0] write_stecil;
 
     cpu_state_t  state;
     logic [31:0] instruction_reg;
@@ -37,11 +41,11 @@ module main(
     logic [4:0] rd;
 
     // assign opcode = instruction_reg[6:0];
-    // assign func3 = instruction_reg[13:11];
-    // assign func7 = instruction_reg[31:25];
+    // assign rd = instruction_reg[10:7];
+    // assign func3 = instruction_reg[14:11];
     // assign rs1 = instruction_reg[19:15];
     // assign rs2 = instruction_reg[24:20];
-    // assign rd = instruction_reg[11:7];
+    // assign func7 = instruction_reg[31:25];
 
     wire instruction_t inst = instruction_reg;
 
@@ -87,12 +91,14 @@ module main(
     // raddr: point at instruction during FETCH_INSTRUCTION, data during load states
     assign raddr = (state == LOAD_WAIT || state == LOAD_DONE) ? load_addr : pc;
 
+    assign waddr = (state == SEND_WAIT || state == SEND_DONE) ? write_addr : {64{1'b0}};
+    assign wen = (state == SEND_DONE);
+
     always_ff @(posedge clk) begin
         if (reset) begin
             pc         <= 0;
             load_addr  <= 0;
             load_reg   <= 0;
-            waddr      <= 0;
             wdata      <= 0;
             state      <= FETCH_ADDR;
             load_func  <= LDU;
@@ -235,26 +241,30 @@ module main(
                             //TODO add write strobes latelly and make multistage
                             case (inst.func3)
                                 3'b000: begin       // sb
-                                    waddr <= alu_result;
-                                    wdata <= registers[inst.rs2];
+                                    write_addr <= alu_result;
+                                    write_reg <= inst.rs2;
+                                    write_stecil <= {{56{1'b1}}, 8'hff};
                                 end
                                 3'b001: begin       // sh
-                                    waddr <= alu_result;
-                                    wdata <= registers[inst.rs2];
+                                    write_addr <= alu_result;
+                                    write_reg <= inst.rs2;
+                                    write_stecil <= {{48{1'b1}}, 16'hffff};
                                 end
                                 3'b010: begin       // sw
-                                    waddr <= alu_result;
-                                    wdata <= registers[inst.rs2];
+                                    write_addr <= alu_result;
+                                    write_reg <= inst.rs2;
+                                    write_stecil <= {{32{1'b1}}, 32'hffffffff};
                                 end
                                 3'b011: begin       // sd
-                                    waddr <= alu_result;
-                                    wdata <= registers[inst.rs2];
+                                    write_addr <= alu_result;
+                                    write_reg <= inst.rs2;
+                                    write_stecil <= {64{1'b1}};
                                 end
                                 default: ;
                             endcase
                             pc <= pc + 4;
                             //implement WRITE_WAIT
-                            state <= FETCH_ADDR;
+                            state <= SEND_WAIT;
                         end
 
                         OP_IMM: begin           // I-type arithmetic
@@ -377,7 +387,6 @@ module main(
 
                 LOAD_DONE: begin
                     // rdata is guaranteed valid for load_addr regardless of memory type
-                    // TODO add flag to know size of data to read, also add same states to write data into memory
                     if (load_reg != 0)
                         case (load_func)
                             LB: registers[load_reg] <= {{56{rdata[7]}},  rdata[7:0]};
@@ -394,6 +403,23 @@ module main(
                     load_addr <= 0;
                     state    <= FETCH_ADDR;
                     load_func <= LDU;
+                end
+
+                SEND_WAIT: begin
+                    // waddr == load_addr is stable this cycle.
+                    // Async memory: wdata already valid — could capture here.
+                    // Sync memory:  wdata valid NEXT cycle — must wait.
+                    // LOAD_DONE handles both cases safely.
+                    wdata <= registers[write_reg] & write_stecil;
+                    state <= SEND_DONE;
+                end
+
+                SEND_DONE: begin
+                    wdata <= 0;
+                    write_addr <= 0;
+                    write_reg <= 0;
+                    write_stecil <= 0;
+                    state <= FETCH_ADDR;
                 end
 
                 default: state <= EXEC;             // unreachable, but safe

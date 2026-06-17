@@ -18,7 +18,9 @@ package cpu_types;
         FETCH_INSTRUCTION,
         EXEC,
         LOAD_WAIT,
-        LOAD_DONE
+        LOAD_DONE,
+        SEND_WAIT,
+        SEND_DONE
     } cpu_state_t;
 
 endpackage

@@ -17,25 +17,25 @@ module alu_controller(
                     3'b000: alu_op = ALU_ADD;
                     3'b001: alu_op = ALU_SLL;
                     3'b010: alu_op = ALU_SLT;
-                    3'b011: alu_op = ALU_XOR;
-                    3'b100: alu_op = ALU_AND;
-                    3'b101: alu_op = ALU_SRL;
+                    3'b011: alu_op = ALU_SLTU; // sltiu
+                    3'b100: alu_op = ALU_XOR;
+                    3'b101: alu_op = (func7[5]) ? ALU_SRA : ALU_SRL;
                     3'b110: alu_op = ALU_OR;
-                    3'b111: alu_op = ALU_SRA;
+                    3'b111: alu_op = ALU_AND;
                 endcase
-                OP_REG: begin
-                    unique case (func3)
-                        3'b000: alu_op = (func7[5]) ? ALU_SUB : ALU_ADD;  // sub if func7=0100000, else add
-                        3'b001: alu_op = ALU_SLL;                          // sll
-                        3'b010: alu_op = ALU_SLT;                          // slt
-                        3'b011: alu_op = ALU_SLTU;                         // sltu
-                        3'b100: alu_op = ALU_XOR;                          // xor
-                        3'b101: alu_op = (func7[5]) ? ALU_SRA : ALU_SRL;  // sra if func7=0100000, else srl
-                        3'b110: alu_op = ALU_OR;                           // or
-                        3'b111: alu_op = ALU_AND;                          // and
-                        default: alu_op = ALU_ADD;
-                    endcase
-                end
+            OP_REG: begin
+                unique case (func3)
+                    3'b000: alu_op = (func7[5]) ? ALU_SUB : ALU_ADD;  // sub if func7=0100000, else add
+                    3'b001: alu_op = ALU_SLL;                          // sll
+                    3'b010: alu_op = ALU_SLT;                          // slt
+                    3'b011: alu_op = ALU_SLTU;                         // sltu
+                    3'b100: alu_op = ALU_XOR;                          // xor
+                    3'b101: alu_op = (func7[5]) ? ALU_SRA : ALU_SRL;  // sra if func7=0100000, else srl
+                    3'b110: alu_op = ALU_OR;                           // or
+                    3'b111: alu_op = ALU_AND;                          // and
+                    default: alu_op = ALU_ADD;
+                endcase
+            end
             7'b0011011: //addiw style instructions
                 unique case (func3)
                     3'b000: alu_op = ALU_ADD; //addiw

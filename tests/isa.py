@@ -46,13 +46,24 @@ class ISA:
 
     # ── I-type ──────────────────────────────────────────────
     @staticmethod
-    def _i(opcode, funct3, rd, rs1, imm):
+    def _i(opcode, funct3, rd, rs1, imm, funct7=0):
         imm = imm & 0xFFF
-        return (imm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode
+        return (
+            (funct7 << 25)
+            | (imm << 20)
+            | (rs1 << 15)
+            | (funct3 << 12)
+            | (rd << 7)
+            | opcode
+        )
 
     @staticmethod
     def addi(rd, rs1, imm):
         return ISA._i(0x13, 0x0, rd, rs1, imm)
+
+    @staticmethod
+    def slli(rd, rs1, imm):
+        return ISA._i(0x13, 0x1, rd, rs1, imm, funct7=0x00)
 
     @staticmethod
     def slti(rd, rs1, imm):
@@ -65,6 +76,14 @@ class ISA:
     @staticmethod
     def xori(rd, rs1, imm):
         return ISA._i(0x13, 0x4, rd, rs1, imm)
+
+    @staticmethod
+    def srli(rd, rs1, imm):
+        return ISA._i(0x13, 0x5, rd, rs1, imm, funct7=0x00)
+
+    @staticmethod
+    def srai(rd, rs1, imm):
+        return ISA._i(0x13, 0x5, rd, rs1, imm, funct7=0x20)
 
     @staticmethod
     def ori(rd, rs1, imm):

@@ -9,7 +9,7 @@ VERILOG_SOURCES 	+= $(PWD)/rtl/alu_controller.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu_b_decoder.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu_mask_decoder.sv
 COCOTB_TOPLEVEL 	= main
-COCOTB_TEST_MODULES = tests.main_tb
+COCOTB_TEST_MODULES = tests.isa_tb
 
 EXTRA_ARGS += --coverage
 EXTRA_ARGS += --trace --trace-structs

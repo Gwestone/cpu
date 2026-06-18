@@ -56,6 +56,8 @@ module main(
 
     alu_b_decoder alu_b_dec(
         .opcode(inst.opcode),
+        .func3(inst.func3),
+        .func7(inst.func7),
         .rdata(instruction_reg),
         .rs_reg(registers[inst.rs2]),
         .alu_b(alu_b)
@@ -159,26 +161,38 @@ module main(
                                 if(inst.func3 == 3'b000) begin          // BEQ
                                     if (registers[inst.rs1] == registers[inst.rs2])
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else if(inst.func3 == 3'b001) begin     // BNE
                                     if (registers[inst.rs1] != registers[inst.rs2])
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else if(inst.func3 == 3'b100) begin     // BLT
                                     if ($signed(registers[inst.rs1]) < $signed(registers[inst.rs2]))
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else if(inst.func3 == 3'b101) begin     // BGE
                                     if ($signed(registers[inst.rs1]) >= $signed(registers[inst.rs2]))
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else if(inst.func3 == 3'b110) begin     // BLTU
                                     if ($unsigned(registers[inst.rs1]) < $unsigned(registers[inst.rs2]))
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else if(inst.func3 == 3'b111) begin     // BGEU
                                     if ($unsigned(registers[inst.rs1]) >= $unsigned(registers[inst.rs2]))
                                         pc <= pc + alu_result;
+                                    else
+                                        pc <= pc + 4;
                                 end
                                 else begin
                                     $error("Unsupported branch instruction: opcode=%b func3=%b func7=%b", inst.opcode, inst.func3, inst.func7);
@@ -286,7 +300,7 @@ module main(
                                 end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000000) begin // srli
                                     registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // srai
-                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                    registers[inst.rd] <= alu_result;
                                 end
                             end
                             pc <= pc + 4;

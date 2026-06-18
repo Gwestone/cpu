@@ -102,6 +102,10 @@ class ISA:
         return ISA._i(0x03, 0x0, rd, rs1, imm)
 
     @staticmethod
+    def lbu(rd, rs1, imm):
+        return ISA._i(0x03, 0x4, rd, rs1, imm)
+
+    @staticmethod
     def lh(rd, rs1, imm):
         return ISA._i(0x03, 0x1, rd, rs1, imm)
 

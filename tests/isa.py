@@ -295,3 +295,59 @@ class ISA:
         for w in words:
             b += struct.pack("<I", w)
         return b
+
+    #   # W-type I (opcode 0x1B)
+
+    @staticmethod
+    def addiw(rd, rs1, imm):
+        return ISA._i(0x1B, 0x0, rd, rs1, imm)
+
+    @staticmethod
+    def slliw(rd, rs1, imm):
+        return ISA._i(0x1B, 0x1, rd, rs1, imm, funct7=0x00)
+
+    @staticmethod
+    def srliw(rd, rs1, imm):
+        return ISA._i(0x1B, 0x5, rd, rs1, imm, funct7=0x00)
+
+    @staticmethod
+    def sraiw(rd, rs1, imm):
+        return ISA._i(0x1B, 0x5, rd, rs1, imm, funct7=0x20)
+
+    # W-type R (opcode 0x3B)
+    @staticmethod
+    def addw(rd, rs1, rs2):
+        return ISA._rw(0x00, 0x0, rd, rs1, rs2)
+
+    @staticmethod
+    def subw(rd, rs1, rs2):
+        return ISA._rw(0x20, 0x0, rd, rs1, rs2)
+
+    @staticmethod
+    def sllw(rd, rs1, rs2):
+        return ISA._rw(0x00, 0x1, rd, rs1, rs2)
+
+    @staticmethod
+    def srlw(rd, rs1, rs2):
+        return ISA._rw(0x00, 0x5, rd, rs1, rs2)
+
+    @staticmethod
+    def sraw(rd, rs1, rs2):
+        return ISA._rw(0x20, 0x5, rd, rs1, rs2)
+
+    # helper for W-type R (opcode 0x3B instead of 0x33)
+    @staticmethod
+    def _rw(funct7, funct3, rd, rs1, rs2):
+        return (
+            (funct7 << 25)
+            | (rs2 << 20)
+            | (rs1 << 15)
+            | (funct3 << 12)
+            | (rd << 7)
+            | 0x3B
+        )
+
+    # lwu (opcode 0x03, funct3 0x6)
+    @staticmethod
+    def lwu(rd, rs1, imm):
+        return ISA._i(0x03, 0x6, rd, rs1, imm)

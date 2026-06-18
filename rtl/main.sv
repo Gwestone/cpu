@@ -352,19 +352,35 @@ module main(
                             pc <= pc + 4;
                             state <= FETCH_ADDR;
                         end
-                        // not in RV32I
+                        // RV64I
+                        OP_IMM_W: begin
+                            if (inst.rd != 0) begin
+                                if (inst.func3 == 3'b000) begin // addiw
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                end else if (inst.func3 == 3'b001 && inst.func7 == 7'b0000000) begin // slliw
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000000) begin // srliw
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // sraiw
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                end
+                            end
+                            pc <= pc + 4;
+                            state <= FETCH_ADDR;
+                        end
+
                         OP_REG_W: begin
                             if (inst.rd != 0) begin
                                 if (inst.func3 == 3'b000 && inst.func7 == 7'b0000000) begin // addw
-                                    registers[inst.rd] <= alu_result;
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b000 && inst.func7 == 7'b0100000) begin // subw
-                                    registers[inst.rd] <= alu_result;
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b001 && inst.func7 == 7'b0000000) begin // sllw
-                                    registers[inst.rd] <= alu_result;
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000000) begin // srlw
-                                    registers[inst.rd] <= alu_result;
-                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // sraw
-                                    registers[inst.rd] <= alu_result;
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // srlw
+                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end
                             end
                             pc <= pc + 4;
@@ -423,7 +439,7 @@ module main(
                     state <= FETCH_ADDR;
                 end
 
-                default: state <= EXEC;             // unreachable, but safe
+                default: state <= FETCH_ADDR;             // unreachable, but safe
             endcase
         end
     end

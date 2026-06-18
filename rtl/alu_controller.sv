@@ -36,18 +36,18 @@ module alu_controller(
                     default: alu_op = ALU_ADD;
                 endcase
             end
-            7'b0011011: //addiw style instructions
+            OP_IMM_W: //addiw style instructions
                 unique case (func3)
                     3'b000: alu_op = ALU_ADD; //addiw
                     3'b001: alu_op = ALU_SLL; //slliw
-                    3'b101: alu_op = ALU_SRL; //srliw
                     3'b011: alu_op = ALU_XOR;
                     3'b100: alu_op = ALU_AND;
+                    3'b101: alu_op = (func7[5]) ? ALU_SRA : ALU_SRL; //srliw, sraiw
                     3'b110: alu_op = ALU_OR;
                     3'b111: alu_op = ALU_SRA;
                     default: alu_op = ALU_NOP;
                 endcase
-            7'b0111011:
+            OP_REG_W:
                 if(func3 == 3'b000 && func7 == 7'b0000000) alu_op = ALU_ADD; //addw
                 else if(func3 == 3'b000 && func7 == 7'b0100000) alu_op = ALU_SUB; //subw
                 else if(func3 == 3'b001 && func7 == 7'b0000000) alu_op = ALU_SLL; //sllw

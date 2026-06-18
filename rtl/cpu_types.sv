@@ -7,6 +7,7 @@ package cpu_types;
         OP_JALR     = 7'b1100111,
         OP_BRANCH   = 7'b1100011,
         OP_IMM      = 7'b0010011,
+        OP_IMM_W    = 7'b0011011,
         OP_REG      = 7'b0110011,
         OP_REG_W    = 7'b0111011,
         OP_LOAD     = 7'b0000011,

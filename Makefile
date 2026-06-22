@@ -3,6 +3,7 @@ TOPLEVEL_LANG  		= verilog
 VERILOG_SOURCES 	+= $(PWD)/rtl/cpu_types.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu_types.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/load_types.sv
+VERILOG_SOURCES 	+= $(PWD)/rtl/mask_types.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/main.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu.sv
 VERILOG_SOURCES 	+= $(PWD)/rtl/alu_controller.sv

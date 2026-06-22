@@ -18,9 +18,13 @@ module alu_b_decoder(
 
     always_comb begin
         case (opcode)                                                  //srai   //everything else
-            OP_IMM: result = (func3 == 3'b101 && func7 == 7'b0100000) ? shamt : imm_i;   // I-type arithmetic (addi, slti, xori...)
+            OP_IMM: result =    (func3 == 3'b001 && func7 == 7'b0000000) ||
+                                (func3 == 3'b101 && func7 == 7'b0000000) ||
+                                (func3 == 3'b101 && func7 == 7'b0100000) ? shamt : imm_i;   // I-type arithmetic (addi, slti, xori...)
             OP_REG: result = rs_reg;   // register arithmetic (add, slt, xor...)
-            OP_IMM_W: result = (func3 == 3'b101 && func7 == 7'b0100000) ? shamt : imm_i;   // W-type I (addiw, slliw...)
+            OP_IMM_W: result =  (func3 == 3'b001 && func7 == 7'b0000000) ||
+                                (func3 == 3'b101 && func7 == 7'b0000000) ||
+                                (func3 == 3'b101 && func7 == 7'b0100000) ? shamt % 32 : imm_i;   // W-type I (addiw, slliw...)
             OP_REG_W: result = rs_reg;
             OP_LOAD: result = imm_i;   // loads (lb, lw, ld...)
             OP_JALR: result = imm_i;   // jalr

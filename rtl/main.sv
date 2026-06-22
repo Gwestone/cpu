@@ -63,7 +63,7 @@ module main(
         .alu_b(alu_b)
     );
 
-    logic [63:0] alu_mask;
+    wire mask_type_t alu_mask;
 
     alu_mask_decoder alu_mask_dec(
         .opcode(inst.opcode),
@@ -295,11 +295,12 @@ module main(
                                     registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b111) begin       // andi
                                     registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
-                                end else if (inst.func3 == 3'b001 && inst.func7 == 7'b0000000) begin // slli
-                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
-                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000000) begin // srli
-                                    registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
-                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // srai
+                                                                    //Because func7[0] is used as shamt [5] instead
+                                end else if (inst.func3 == 3'b001 && inst.func7[6:1] == 6'b000000) begin // slli
+                                    registers[inst.rd] <= alu_result;
+                                end else if (inst.func3 == 3'b101 && inst.func7[6:1] == 6'b000000) begin // srli
+                                    registers[inst.rd] <= alu_result;
+                                end else if (inst.func3 == 3'b101 && inst.func7[6:1] == 6'b010000) begin // srai
                                     registers[inst.rd] <= alu_result;
                                 end
                             end

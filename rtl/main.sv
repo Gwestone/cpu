@@ -1,5 +1,7 @@
 import cpu_types::*;
 import load_types::*;
+import alu_types::*;
+import mul_types::*;
 
 typedef struct packed {
     logic [6:0] func7;
@@ -72,7 +74,7 @@ module main(
         .alu_mask(alu_mask)
     );
 
-    logic [3:0]  alu_op;
+    alu_op_t alu_op;
     logic [63:0] alu_result;
 
     alu_controller alu_ctrl(
@@ -88,6 +90,37 @@ module main(
         .mask_in(alu_mask),
         .alu_op_in(alu_op),
         .result_out(alu_result)
+    );
+
+    wire mask_type_t mul_mask;
+    mul_op_t mul_op;
+    logic [63:0] mul_result;
+
+    logic [63:0] mul_a;
+    assign mul_a = registers[inst.rs1];
+    logic [63:0] mul_b;
+    assign mul_b = registers[inst.rs2];
+
+    mul_mask_decoder mul_mask_dec(
+        .opcode(inst.opcode),
+        .func3(inst.func3),
+        .func7(inst.func7),
+        .mul_mask(mul_mask)
+    );
+
+    mul_controller mul_ctrl(
+        .opcode(inst.opcode),
+        .func3(inst.func3),
+        .func7(inst.func7),
+        .mul_op(mul_op)
+    );
+
+    mul mul_inst(
+        .a_in(mul_a),
+        .b_in(mul_b),
+        .mask_in(mul_mask),
+        .mul_op(mul_op),
+        .result_out(mul_result)
     );
 
     // raddr: point at instruction during FETCH_INSTRUCTION, data during load states
@@ -309,7 +342,7 @@ module main(
                         end
 
                         OP_REG: begin   //register instructions
-                            if (inst.func3 == 3'b000 && inst.func7 == 7'b0) begin   // add
+                            if (inst.func3 == 3'b000 && inst.func7 == 7'b0000000) begin   // add
                                 if (inst.rd != 0)
                                     registers[inst.rd] <= alu_result;
                             end
@@ -349,7 +382,33 @@ module main(
                             else if (inst.func3 == 3'b111 && inst.func7 == 7'b0000000) begin   // and
                                 if (inst.rd != 0)
                                     registers[inst.rd] <= alu_result;
+                                //M set
+                            end else if (inst.func3 == 3'b000 && inst.func7 == 7'b0000001) begin   // mul
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b001 && inst.func7 == 7'b0000001) begin   // mulh
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b011 && inst.func7 == 7'b0000001) begin   // mulhu
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b010 && inst.func7 == 7'b0000001) begin   // mulhsu
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b100 && inst.func7 == 7'b0000001) begin   // div
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000001) begin   // divu
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b110 && inst.func7 == 7'b0000001) begin   // rem
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
+                            end else if (inst.func3 == 3'b111 && inst.func7 == 7'b0000001) begin   // remu
+                                if (inst.rd != 0)
+                                    registers[inst.rd] <= mul_result;
                             end
+
                             pc <= pc + 4;
                             state <= FETCH_ADDR;
                         end
@@ -382,6 +441,17 @@ module main(
                                     registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
                                 end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0100000) begin // srlw
                                     registers[inst.rd] <= {{32{alu_result[31]}}, alu_result[31:0]};
+                                    //M - set
+                                end else if (inst.func3 == 3'b000 && inst.func7 == 7'b0000001) begin // mulw
+                                    registers[inst.rd] <= {{32{mul_result[31]}}, mul_result[31:0]};
+                                end else if (inst.func3 == 3'b100 && inst.func7 == 7'b0000001) begin // divw
+                                    registers[inst.rd] <= {{32{mul_result[31]}}, mul_result[31:0]};
+                                end else if (inst.func3 == 3'b101 && inst.func7 == 7'b0000001) begin // divuw
+                                    registers[inst.rd] <= {{32{1'b0}}, mul_result[31:0]};
+                                end else if (inst.func3 == 3'b110 && inst.func7 == 7'b0000001) begin // remw
+                                    registers[inst.rd] <= {{32{mul_result[31]}}, mul_result[31:0]};
+                                end else if (inst.func3 == 3'b111 && inst.func7 == 7'b0000001) begin // remuw
+                                    registers[inst.rd] <= {{32{1'b0}}, mul_result[31:0]};
                                 end
                             end
                             pc <= pc + 4;

@@ -335,6 +335,64 @@ class ISA:
     def sraw(rd, rs1, rs2):
         return ISA._rw(0x20, 0x5, rd, rs1, rs2)
 
+    # ═════════════════════════════════════════════════════════════════════════
+    # RV32M / Base M-Extension (Opcode: 0x33, funct7: 0x01)
+    # ═════════════════════════════════════════════════════════════════════════
+    @staticmethod
+    def mul(rd, rs1, rs2):
+        return ISA._m(0x33, 0x0, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def mulh(rd, rs1, rs2):
+        return ISA._m(0x33, 0x1, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def mulhsu(rd, rs1, rs2):
+        return ISA._m(0x33, 0x2, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def mulhu(rd, rs1, rs2):
+        return ISA._m(0x33, 0x3, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def div(rd, rs1, rs2):
+        return ISA._m(0x33, 0x4, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def divu(rd, rs1, rs2):
+        return ISA._m(0x33, 0x5, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def rem(rd, rs1, rs2):
+        return ISA._m(0x33, 0x6, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def remu(rd, rs1, rs2):
+        return ISA._m(0x33, 0x7, rd, rs1, rs2, funct7=0x01)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # RV64M / W-Type M-Extension (Opcode: 0x3B, funct7: 0x01)
+    # ═════════════════════════════════════════════════════════════════════════
+    @staticmethod
+    def mulw(rd, rs1, rs2):
+        return ISA._m(0x3B, 0x0, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def divw(rd, rs1, rs2):
+        return ISA._m(0x3B, 0x4, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def divuw(rd, rs1, rs2):
+        return ISA._m(0x3B, 0x5, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def remw(rd, rs1, rs2):
+        return ISA._m(0x3B, 0x6, rd, rs1, rs2, funct7=0x01)
+
+    @staticmethod
+    def remuw(rd, rs1, rs2):
+        return ISA._m(0x3B, 0x7, rd, rs1, rs2, funct7=0x01)
+
     # helper for W-type R (opcode 0x3B instead of 0x33)
     @staticmethod
     def _rw(funct7, funct3, rd, rs1, rs2):
@@ -351,3 +409,14 @@ class ISA:
     @staticmethod
     def lwu(rd, rs1, imm):
         return ISA._i(0x03, 0x6, rd, rs1, imm)
+
+    @staticmethod
+    def _m(opcode, funct3, rd, rs1, rs2, funct7=0):
+        return (
+            (funct7 << 25)
+            | (rs2 << 20)
+            | (rs1 << 15)
+            | (funct3 << 12)
+            | (rd << 7)
+            | opcode
+        )

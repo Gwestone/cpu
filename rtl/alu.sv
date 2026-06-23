@@ -4,7 +4,6 @@ import mask_types::*;
 module alu(
     input logic [63:0] a_in,
     input logic [63:0] b_in,
-    //TODO remake mask to be enum value
     input mask_type_t mask_in,
     input logic [3:0] alu_op_in,
     output logic [63:0] result_out
